@@ -1,0 +1,7 @@
+# IDE & Editor files
+.vscode/
+.idea/
+
+# OS generated files
+Thumbs.db
+.DS_Store

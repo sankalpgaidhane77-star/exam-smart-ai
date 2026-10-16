@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ExamSmart AI – Document Reader</title>
+<link rel="stylesheet" href="futuristic.css">
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+
+<!-- THEME TOGGLE -->
+<button class="theme-toggle" onclick="toggleTheme()" title="Toggle Dark Mode">🌙</button>
+
+<!-- 3D Background Canvas -->
+<canvas id="bgCanvas" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none;"></canvas>
+
+<!-- AUTH PAGE -->
+<div id="authPage" class="auth">
+    <div class="auth-box">
+        <h2 id="formTitle">📚 Login</h2>
+
+        <input type="text" id="username" placeholder="👤 Username" autocomplete="off"
+               onkeypress="if(event.key==='Enter') handleAuth()">
+        <div style="position:relative">
+            <input type="password" id="password" placeholder="🔐 Password"
+                   style="padding-right:3rem"
+                   onkeypress="if(event.key==='Enter') handleAuth()">
+            <button type="button" onclick="togglePassword()"
+                    style="position:absolute;right:10px;top:50%;transform:translateY(-50%);
+                           background:none;border:none;cursor:pointer;font-size:1.1rem;
+                           width:auto;padding:0;margin:0;color:#94a3b8">👁️</button>
+        </div>
+
+        <button onclick="handleAuth()">✨ Submit</button>
+
+        <p id="toggleText">
+            Don't have an account?
+            <span onclick="toggleForm()">Create one</span>
+        </p>
+        <p id="demoHint" style="font-size:0.85em;opacity:0.6;margin-top:8px">
+            💡 Demo: <b>test</b> / <b>123</b>
+        </p>
+    </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="mainApp" style="display:none;">
+
+    <!-- TOPBAR -->
+    <div class="topbar">
+        <h1>ExamSmart AI</h1>
+
+        <div class="modes">
+            <button onclick="setMode('read')" id="readBtn">📖 Read</button>
+            <button onclick="setMode('exam')" id="examBtn">✏️ Exam</button>
+            <button onclick="setMode('teach')" id="teachBtn">👨‍🏫 Teach</button>
+            <button onclick="exportChat()" title="Export Chat History">📤 Export</button>
+            <button onclick="clearChat()" title="Clear Chat History">🗑️ Clear</button>
+            <button onclick="logout()">🚪 Logout</button>
+        </div>
+    </div>
+
+    <!-- CONTENT -->
+    <div class="container">
+
+        <!-- LEFT -->
+        <div class="doc-viewer">
+            <div class="upload-box" id="uploadBox">
+                <h3>📤 Upload Document</h3>
+                <p>PDF • DOC • TXT • Images</p>
+                <input type="file" id="fileInput" accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png" onchange="handleFileUpload(event)">
+            </div>
+
+            <div class="document-info" id="documentInfo" style="display: none;">
+                <h4>📄 Document Information</h4>
+                <div class="info-grid">
+                    <div><strong>Name:</strong> <span id="docName">-</span></div>
+                    <div><strong>Size:</strong> <span id="docSize">-</span></div>
+                    <div><strong>Type:</strong> <span id="docType">-</span></div>
+                    <div><strong>Pages:</strong> <span id="docPages">-</span></div>
+                </div>
+            </div>
+
+            <div class="preview-text" id="previewText">
+                📄 Your document preview will appear here...
+            </div>
+        </div>
+
+        <!-- RIGHT -->
+        <div class="ai-panel">
+            <h2>🤖 AI Exam Assistant</h2>
+
+            <!-- API KEY INPUT -->
+            <div class="api-key-section" style="display: none;">
+                <div class="api-card">
+                    <h4>🔑 API Key Configuration</h4>
+                    <p class="api-info-text">
+                        Configure your own API key to enable AI. We support both Google Gemini (starts with <code>AIzaSy</code>) and OpenAI (starts with <code>sk-</code>) keys.
+                    </p>
+                    <div class="api-input-container">
+                        <input type="password" id="apiKeyInput" placeholder="Paste your API key here..." autocomplete="off">
+                        <button type="button" class="eye-toggle-btn" onclick="toggleApiKeyVisibility()" title="Toggle Visibility">👁️</button>
+                    </div>
+                    <div class="api-btn-group">
+                        <button onclick="saveUserApiKey()" class="save-key-btn">💾 Save Key</button>
+                        <button onclick="clearUserApiKey()" class="clear-key-btn">🗑️ Clear</button>
+                    </div>
+                    <div id="apiStatusMessage" class="api-status-msg"></div>
+                </div>
+            </div>
+
+            <!-- STATS PANEL -->
+            <div class="stats-panel" id="statsPanel" style="display: none;">
+                <h4>📊 Session Statistics</h4>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <span class="stat-number" id="questionsAsked">0</span>
+                        <span class="stat-label">Questions Asked</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number" id="documentsProcessed">0</span>
+                        <span class="stat-label">Documents Processed</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number" id="sessionTime">0m</span>
+                        <span class="stat-label">Session Time</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number" id="aiResponses">0</span>
+                        <span class="stat-label">AI Responses</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="chatBox" class="chat-box">
+                <div class="ai-response">
+                    👋 Hello! Upload a document and I'll help you prepare for your exams. Ask me anything!
+                    <div class="tags">
+                        <span>✓ Verified</span>
+                        <span>⚡ Fast</span>
+                        <span>🎯 Accurate</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="input-area">
+                <input type="text" id="question" placeholder="💬 Ask about your document..." onkeypress="if(event.key === 'Enter') askAI();">
+                <button onclick="askAI()" id="askBtn">🚀 Ask</button>
+            </div>
+
+            <div class="controls">
+                <div>
+                    <button onclick="setLanguage('english')" id="langEnglish">🇺🇸 English</button>
+                    <button onclick="setLanguage('hinglish')" id="langHinglish">🇮🇳 Hinglish</button>
+                    <button onclick="setLanguage('hindi')" id="langHindi">🇮🇳 Hindi</button>
+                </div>
+                <div>
+                    <button onclick="setMarks(2)" id="marks2">⭐ 2 Marks</button>
+                    <button onclick="setMarks(5)" id="marks5">⭐⭐ 5 Marks</button>
+                    <button onclick="setMarks(10)" id="marks10">⭐⭐⭐ 10 Marks</button>
+                </div>
+                <div>
+                    <button onclick="toggleApiKeySection()">🔑 API Settings</button>
+                    <button onclick="toggleStats()">📊 Statistics</button>
+                    <button onclick="showHelp()">❓ Help</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- HELP MODAL -->
+<div id="helpModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <span class="close" onclick="closeModal()">&times;</span>
+        <h2>❓ Help & Features</h2>
+        <div class="help-content">
+            <h3>🚀 Getting Started</h3>
+            <ul>
+                <li>Upload a document (PDF, DOC, TXT, or image)</li>
+                <li>Ask questions about the content</li>
+                <li>Choose your preferred language and answer length</li>
+            </ul>
+
+            <h3>🎯 Modes</h3>
+            <ul>
+                <li><strong>Read:</strong> General reading and comprehension</li>
+                <li><strong>Exam:</strong> Exam-focused answers with key points</li>
+                <li><strong>Teach:</strong> Detailed teaching explanations</li>
+            </ul>
+
+            <h3>🌟 New Features</h3>
+            <ul>
+                <li>📤 Export chat history</li>
+                <li>🗑️ Clear chat</li>
+                <li>📊 Session statistics</li>
+                <li>🌙 Dark mode toggle</li>
+                <li>📄 Document information panel</li>
+                <li>🎨 Enhanced UI with animations</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<script src="script_enhanced.js"></script>
+</body>
+</html>
